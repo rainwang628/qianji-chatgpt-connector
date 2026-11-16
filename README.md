@@ -2,8 +2,7 @@
 
 更新日期：2026-11-14。用途：让个人 ChatGPT 查询钱迹，并在预览和确认后编辑已有账单；不提供新增或删除。
 
-源码私有备份：[rainwang628/qianji-chatgpt-connector](https://github.com/rainwang628/qianji-chatgpt-connector)。
-仅同步适配源码、测试、部署模板和说明；`.private/`、凭据、账单缓存、日志、运行环境及第三方 vendor 均不上传。
+源码：[rainwang628/qianji-chatgpt-connector](https://github.com/rainwang628/qianji-chatgpt-connector)。
 
 这是可部署的连接工具源码包。启动并接入后，ChatGPT 才能使用；ZIP 本身不是可直接上传安装的 ChatGPT 插件。
 原始源码包交付时尚未绑定账号。本机现已完成钱迹账号绑定、真实账单核对、ChatGPT 网页及 iPhone 实际调用验证；
@@ -63,7 +62,7 @@
 返回信息不完整时，结果可能不确定；不要自动重试，应逐笔刷新核对。为恢复核对提供线索，
 写入前后的批次摘要和结果保存在 `.private/batch-category-audit.jsonl`，按私人财务数据保护，
 写入前若无法记录摘要则拒绝本次修改。账户缓存与实际远端并发修改之间仍存在竞争窗口，
-不同桥接进程的锁不共享。禁止将审计日志纳入 Git 或公开发布。
+不同桥接进程的锁不共享。
 
 v0.4.0 的账户迁移功能已通过隔离环境虚构账单测试及一次本机真实账单只读预览；
 真实工具刷新、审批弹窗与批量保存尚未验证；
