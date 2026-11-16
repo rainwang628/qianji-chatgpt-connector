@@ -1,0 +1,2 @@
+# Exact SDK version verified in this deliverable's test environment.
+mcp==1.29.0
