@@ -1,14 +1,23 @@
-# 钱迹 × ChatGPT 个人账单助手 v0.4.0
+# 钱迹个人账单助手（DSH MCP）v0.4.1
 
-更新日期：2026-11-14。用途：让个人 ChatGPT 查询钱迹，并在预览和确认后编辑已有账单；不提供新增或删除。
+更新日期：2026-11-18。用途：让 DSH（DeepSeek Harness）从本机查询钱迹，并在预览和确认后编辑已有账单；不提供新增或删除。**当前只开放查询**——写入工具在 DSH 侧保持禁用（`QIANJI_READ_ONLY=1`），放开写入是后续独立任务。
 
-源码：[rainwang628/qianji-chatgpt-connector](https://github.com/rainwang628/qianji-chatgpt-connector)。
+源码：[rainwang628/qianji-chatgpt-connector](https://github.com/rainwang628/qianji-chatgpt-connector)（仓库名沿用历史，实际接入宿主已改为 DSH）。
 
-这是可部署的连接工具源码包。启动并接入后，ChatGPT 才能使用；ZIP 本身不是可直接上传安装的 ChatGPT 插件。
-原始源码包交付时尚未绑定账号。本机现已完成钱迹账号绑定、真实账单核对、ChatGPT 网页及 iPhone 实际调用验证；
+这是可部署的连接工具源码包，本身是 stdio MCP 服务器，由宿主进程拉起。本机的主接入方式是 DSH 经 `@local/dsh-mcp-lazy` 按需调用；此前面向 ChatGPT 的 OpenAI Secure MCP Tunnel 已于 2026-11-18 停用并移除，详见[接入方式](#接入方式)。
+
+原始源码包交付时尚未绑定账号。本机现已完成钱迹账号绑定与真实账单核对；此前 ChatGPT 网页及 iPhone 的调用验证属历史记录，不再是当前接入路径。
 当前运行方式以 `MAC_DEPLOYMENT.md` 为准。部署与验证过程没有修改任何钱迹账单。
 
-本机安装记录、原生 Bun 启动方式和当前验收状态见 [MAC_DEPLOYMENT.md](MAC_DEPLOYMENT.md)。
+本机安装记录、原生 Python 启动方式和当前验收状态见 [MAC_DEPLOYMENT.md](MAC_DEPLOYMENT.md)。
+
+## 接入方式
+
+**当前（DSH，主用）**：DSH desktop profile 通过 `@local/dsh-mcp-lazy` 插件按需连接本包。插件的 `cordis.patch.yml` 已配置 `serverName: qianji`、stdio 命令指向部署根的 `.venv/bin/python qianji_chatgpt.py`，并设 `QIANJI_READ_ONLY: '1'`（只读）。在 DSH 会话中先调 `mcp_load('qianji')` 挂载工具，用完调 `mcp_unload('qianji')` 卸载；未挂载时这 12 个工具的 schema 不进入每次请求。本地上游 `com.rain.qianji-readonly.upstream` 必须运行（桥接依赖 `http://127.0.0.1:3000/mcp`）。
+
+**已停用（ChatGPT，历史）**：OpenAI Secure MCP Tunnel（`com.rain.qianji-readonly.tunnel`）已停用并移除，不再从 ChatGPT 云端调用。原先的隧道接入步骤保留在[接入 ChatGPT（历史）](#接入-chatgpt历史)仅作存档。
+
+**写入权限**：当前 DSH 侧只读。`QIANJI_READ_ONLY=1` 时 `preview_bill_edit`、`apply_bill_edit`、`preview_batch_categories`、`apply_batch_categories` 等写入工具既不列出也拒绝执行。放开写入须作为独立任务评估（财务写入 + 宿主审批链路）。
 
 ## 能做什么
 
@@ -37,7 +46,7 @@
 
 一次只编辑一笔：先查询账单并调用 `preview_bill_edit`，展示完整原记录、字段变更、账本和币种；
 由用户确认本次具体变更后才调用 `apply_bill_edit`。保存会改变云端账单，也可能影响关联资产余额。
-`apply_bill_edit` 标注为非只读、具有覆盖风险、不可自动重试的写入工具。ChatGPT 客户端承担操作批准，
+`apply_bill_edit` 标注为非只读、具有覆盖风险、不可自动重试的写入工具；当前 DSH 侧只读、该工具不开放。若将来放开，宿主客户端承担操作批准，
 不要选择“记住批准”；预览编号本身不证明用户已经批准。
 
 服务端将预览内容固定在内存中，有效期五分钟，使用一次即失效，服务重启也会清空。
@@ -72,20 +81,19 @@ v0.4.0 的账户迁移功能已通过隔离环境虚构账单测试及一次本�
 
 本工具适配社区项目 [fangzhengjin/qianji-mcp](https://github.com/fangzhengjin/qianji-mcp)，
 核对的上游版本为 `74a8b17bc552b6ee168e1ca246e81b465322a258`。
-钱迹协议、账号绑定、云端同步及统计由上游实现；本包提供 ChatGPT 侧的工具白名单、编辑预览、请求校验、凭据注入与私有连接入口。
+钱迹协议、账号绑定、云端同步及统计由上游实现；本包提供工具白名单、编辑预览、请求校验、凭据注入与本地 stdio MCP 入口。宿主侧（DSH）负责连接与工具调度。
 
 上游依赖钱迹未公开的云端 HTTP 接口，属于社区实现，不能等同于钱迹官方授权的开放 API；钱迹升级或账号验证策略变化可能使连接失效。
-钱迹官方 iOS 文档说明了快捷指令自动记账与带白名单的本机 URL Scheme 读取能力，这些本机接口本身不等于 ChatGPT 云端可直接调用的远程服务。
+钱迹官方 iOS 文档说明了快捷指令自动记账与带白名单的本机 URL Scheme 读取能力，这些本机接口本身不等于云端可直接调用的远程服务。
 
-采用 OpenAI Secure MCP Tunnel 连接私有的 stdio 工具，不公开无鉴权公网接口。
-需要你自己的 OpenAI Platform 隧道权限、运行密钥及可添加自定义 MCP 的 ChatGPT 环境；这些权限要在实际账号中确认。
+桥接进程以 stdio MCP 方式由本机宿主（DSH）拉起，钱迹上游 PAT 由本机注入；不公开无鉴权公网接口。此前经 OpenAI Secure MCP Tunnel 暴露给 ChatGPT 的方式已停用。`QIANJI_READ_ONLY=1` 时只注册查询类工具。
 服务运行的电脑或服务器必须在线。首次账号绑定请在部署服务的电脑浏览器中完成，绑定页的 `127.0.0.1` 地址不能直接在另一台手机打开。
 若以后改成服务器部署，需要另行配置安全的绑定页访问方式；本包没有配置公网域名或公网 OAuth 服务。
 
 ## 在自己的电脑上启动
 
 准备 Python 3.11 或更新版本、Docker Compose，以及可用的 Docker 引擎。
-当前脚本按 macOS/Linux 编写。以下操作均在解压目录中执行，不需要把账号密码发给 ChatGPT。
+当前脚本按 macOS/Linux 编写。以下操作均在解压目录中执行，不需要把账号密码发给宿主或任何远端服务。
 
 ```bash
 python3 -m venv .venv
@@ -106,7 +114,9 @@ docker compose up -d
 
 如果容器镜像对应标签不可获取，请从上述固定上游提交自行构建；本次未下载或启动该镜像，不能把源码审阅视为镜像可用性验证。
 
-## 接入 ChatGPT
+## 接入 ChatGPT（历史）
+
+> **已停用（2026-11-18）：** 本节描述的 OpenAI Secure MCP Tunnel 已从本机移除——`com.rain.qianji-readonly.tunnel` launchd 已卸载禁用、plist 已删除、隧道进程已停。当前主接入方式见[接入方式](#接入方式)（DSH）。以下仅作历史存档，不要按此重新接入。
 
 按 [OpenAI 官方 Secure MCP Tunnel 文档](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
 从 Platform 隧道设置取得 `tunnel_id`、下载当前 `tunnel-client`，并核实隧道与目标 ChatGPT 环境的关联和权限。
